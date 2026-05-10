@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "BirthdayResponse": {
+      "title": "Birthday Response",
+      "description": "A response to the birthday forgiveness request",
+      "type": "object",
+      "properties": {
+        "choice": {
+          "type": "string",
+          "enum": ["yes", "no"],
+          "description": "The choice made by Betty"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the response was made"
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "The browser or device used"
+        },
+        "screenSize": {
+          "type": "string",
+          "description": "The screen dimensions"
+        }
+      },
+      "required": ["choice", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/responses/{responseId}": {
+      "schema": "BirthdayResponse",
+      "description": "Collection of responses from Betty"
+    }
+  }
+}

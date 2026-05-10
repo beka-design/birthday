@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerified() && request.auth.token.email == 'berekettesfaye2030@gmail.com';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidResponse(data) {
+      return data.keys().hasAll(['choice', 'timestamp', 'userAgent', 'screenSize']) &&
+             data.keys().size() == 4 &&
+             data.choice in ['yes', 'no'] &&
+             data.timestamp == request.time &&
+             data.userAgent is string && data.userAgent.size() <= 500 &&
+             data.screenSize is string && data.screenSize.size() <= 50;
+    }
+
+    match /responses/{responseId} {
+      allow create: if isValidResponse(incoming());
+      allow read: if isAdmin();
+    }
+    
+    // Testing connection document
+    match /test/connection {
+      allow get: if true;
+    }
+  }
+}
