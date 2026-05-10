@@ -61,6 +61,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
  */
 
 enum Step {
+  START = "start",
   LANDING = "landing",
   MESSAGE = "message",
   CHOICE = "choice",
@@ -261,7 +262,7 @@ function SilkBackground() {
 }
 
 export default function App() {
-  const [step, setStep] = useState<Step>(Step.LANDING);
+  const [step, setStep] = useState<Step>(Step.START);
   const [noClicks, setNoClicks] = useState(0);
   const [noButtonPos, setNoButtonPos] = useState({ x: 0, y: 0 });
   const [isMuted, setIsMuted] = useState(true);
@@ -298,9 +299,10 @@ export default function App() {
 
   useEffect(() => {
     const handleFirstInteraction = () => {
-      if (audioRef.current && isMuted) {
-        setIsMuted(false);
+      if (audioRef.current && isMuted && step !== Step.LANDING) {
         audioRef.current.play().catch(e => console.log("Playback blocked:", e));
+        audioRef.current.muted = false;
+        setIsMuted(false);
       }
       window.removeEventListener('click', handleFirstInteraction);
       window.removeEventListener('touchstart', handleFirstInteraction);
@@ -317,12 +319,10 @@ export default function App() {
 
   useEffect(() => {
     if (audioRef.current) {
+      // Just ensure sync, don't force play here as it can be blocked
       audioRef.current.muted = isMuted;
-      if (!isMuted && step !== Step.LANDING) {
-        audioRef.current.play().catch((err) => console.log("Audio play failed:", err));
-      }
     }
-  }, [isMuted, step]);
+  }, [isMuted]);
 
   useEffect(() => {
     if (step === Step.LANDING) {
@@ -358,7 +358,16 @@ export default function App() {
   };
 
   const toggleMute = () => {
-    setIsMuted(prev => !prev);
+    if (audioRef.current) {
+      if (isMuted) {
+        audioRef.current.play().catch(e => console.log("Play failed:", e));
+        audioRef.current.muted = false;
+      } else {
+        audioRef.current.pause();
+        audioRef.current.muted = true;
+      }
+      setIsMuted(!isMuted);
+    }
   };
 
   const handleNoClick = () => {
@@ -422,6 +431,56 @@ export default function App() {
 
       <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 py-20">
         <AnimatePresence mode="wait">
+          {/* 0. Start Screen (Gift Box) */}
+          {step === Step.START && (
+            <motion.div
+              key="start"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ scale: 2, opacity: 0, filter: "blur(40px)" }}
+              transition={{ duration: 1 }}
+              className="flex flex-col items-center justify-center space-y-12 cursor-pointer"
+              onClick={() => {
+                setStep(Step.LANDING);
+                if (audioRef.current) {
+                  audioRef.current.play().catch(e => console.log("Init play failed:", e));
+                  audioRef.current.muted = false;
+                  setIsMuted(false);
+                }
+              }}
+            >
+              <motion.div
+                animate={{ 
+                  y: [0, -20, 0],
+                  scale: [1, 1.05, 1],
+                  rotate: [0, -1, 1, 0]
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="relative"
+              >
+                <div className="absolute -inset-10 bg-white/20 blur-3xl animate-pulse rounded-full" />
+                <div className="relative bg-white/10 backdrop-blur-xl border border-white/30 p-12 rounded-[3rem] shadow-2xl flex flex-col items-center space-y-6">
+                  <div className="p-6 bg-gradient-to-br from-pink-400 to-rose-400 rounded-2xl shadow-inner">
+                    <Gift size={64} className="text-white drop-shadow-lg" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-serif italic text-white tracking-widest uppercase">For Betty</h2>
+                    <p className="text-[10px] uppercase tracking-[0.6em] text-pink-200 opacity-60">A special delivery</p>
+                  </div>
+                </div>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+                className="text-center"
+              >
+                <p className="text-sm font-light tracking-[0.5em] uppercase text-white/40 animate-pulse">Tap to open present</p>
+              </motion.div>
+            </motion.div>
+          )}
+
           {/* 1. Landing Screen */}
           {step === Step.LANDING && (
             <motion.div
@@ -693,9 +752,7 @@ export default function App() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
                         >
-                          <h3 className="text-5xl md:text-7xl font-serif italic text-white font-light tracking-tight drop-shadow-[0_0_30px_rgba(255,105,180,0.8)] leading-tight">
-                            I will call you
-                          </h3>
+                          
                         </motion.div>
                         
                         <motion.div
